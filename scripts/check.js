@@ -8,9 +8,9 @@ import { sleep, check } from "k6";
 
 export let options = {
   stages: [
-    { duration: "1m",    target: 200 },
-    { duration: "2m",    target: 400 },
-    { duration: "1m",    target: 200 },
+    { duration: "1m",    target: 5 },
+    { duration: "2m",    target: 10 },
+    { duration: "1m",    target: 5 },
   ],
   thresholds: { http_req_duration: ['avg<200', 'p(95)<400'] },
   discardResponseBodies: true,
@@ -18,7 +18,9 @@ export let options = {
   userAgent: 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)'
 };
 
-export default function () {
+export default function ()
+{
+
   const res = http.batch([
     [
       'GET',
@@ -49,15 +51,12 @@ export default function () {
 
   sleep(1);
   check(res[0], {
-    '[Get] http(200)': r => r.status === 200,
-    '[Get] http(201)': r => r.status === 201,
-    '[Get] http(400)': r => r.status === 400,
-    '[Get] http(401)': r => r.status === 401
+    '[Get] http(200)':   r => r.status === 200,
+    '[Get*] !http(200)': r => r.status !== 200,
   });
   check(res[1], {
-    '[Post] http(200)': r => r.status === 200,
-    '[Post] http(201)': r => r.status === 201,
-    '[Post] http(400)': r => r.status === 400,
-    '[Post] http(401)': r => r.status === 401
+    '[Post] http(200)':   r => r.status === 200,
+    '[Post*] !http(200)': r => r.status !== 200,
   });
+
 }
