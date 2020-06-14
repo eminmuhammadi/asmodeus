@@ -1,27 +1,63 @@
-import http from 'k6/http';
-import { sleep, check } from 'k6';
-import { Counter } from 'k6/metrics';
+/***
+ * K6 Documentation
+ * @url https://k6.io/docs/javascript-api/k6-http/batch-requests
+ * @author Emin Muhammadi
+ */
+import http from "k6/http";
+import { sleep, check } from "k6";
 
-export const requests = new Counter('http_reqs');
-
-export const options = {
+export let options = {
   stages: [
-    { target: 1, duration: '1m' },
+    { duration: "1m",    target: 200 },
+    { duration: "2m",    target: 400 },
+    { duration: "1m",    target: 200 },
   ],
-  thresholds: {
-    requests: ['count < 1'],
-  },
+  thresholds: { http_req_duration: ['avg<200', 'p(95)<400'] },
+  discardResponseBodies: true,
   noConnectionReuse: true,
-  userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 12_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/12.0 Mobile/15E148 Safari/604.1'
+  userAgent: 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)'
 };
 
-export default function() {
-
-  const res = http.get('http://example.com');
+export default function () {
+  const res = http.batch([
+    [
+      'GET',
+      'https://example.com',
+      null,
+      {
+        name: '[Get] example.com',
+        tags: {
+          ctype: 'html'
+        }
+      },
+    ],
+    [
+      'POST',
+      'https://example.com',
+      {
+        email:'test@test.com',
+        password:'123321'
+      },
+      {
+        name: '[Post] example.com',
+        tags: {
+          ctype: 'html'
+        }
+      }
+    ]
+  ]);
 
   sleep(1);
-
-  const checkRes = check(res, {
-    'status is 200': r => r.status === 200
+  check(res[0], {
+    '[Get] http(200)': r => r.status === 200,
+    '[Get] http(201)': r => r.status === 201,
+    '[Get] http(400)': r => r.status === 400,
+    '[Get] http(401)': r => r.status === 401
+  });
+  check(res[1], {
+    '[Post] http(200)': r => r.status === 200,
+    '[Post] http(201)': r => r.status === 201,
+    '[Post] http(400)': r => r.status === 400,
+    '[Post] http(401)': r => r.status === 401
   });
 }
